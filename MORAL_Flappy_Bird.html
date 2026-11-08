@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MORAL Flappy</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#171311;color:#f4eee5;font:16px Arial;display:grid;place-items:center;padding:18px}.app{width:min(100%,460px);background:#29211d;border-radius:22px;padding:20px;text-align:center}header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}h1{font-size:24px;letter-spacing:2px;margin:0}.stats{display:flex;gap:8px}.stat{background:#1d1815;border-radius:10px;padding:9px 14px;color:#b9aaa0;font-size:12px}.stat b{display:block;color:white;font-size:20px;margin-top:4px}canvas{width:100%;display:block;background:#eee7dc;border-radius:14px;touch-action:manipulation}button{border:0;border-radius:11px;padding:12px 18px;background:#d9ad94;color:#241a16;font-weight:bold;cursor:pointer;margin-top:12px}.hint{font-size:12px;color:#b9aaa0;margin-top:10px}
+</style></head><body><main class="app"><header><h1>MORAL FLAPPY</h1><div class="stats"><div class="stat">СЧЁТ<b id="score">0</b></div><div class="stat">РЕКОРД<b id="best">0</b></div></div></header>
+<canvas id="game" width="400" height="600"></canvas><button id="start">Начать игру</button><div class="hint">Пробел / ↑ / клик / касание — взмах. P — пауза.</div></main>
+<script>
+const c=document.querySelector('#game'),ctx=c.getContext('2d'),scoreEl=document.querySelector('#score'),bestEl=document.querySelector('#best'),startBtn=document.querySelector('#start');
+const W=400,H=600,ground=555;let bird,pipes,score,best=+(localStorage.getItem('moralFlappyBest')||0),state='ready',paused=false,last=0,spawn=0;
+bestEl.textContent=best;
+function reset(){bird={x:90,y:270,vy:0,r:14};pipes=[];score=0;spawn=0;state='ready';paused=false;scoreEl.textContent=0;startBtn.textContent='Начать игру';draw()}
+function flap(){if(state==='over')return;if(state==='ready')state='playing';if(!paused)bird.vy=-6.2}
+function addPipe(){let gap=160,top=70+Math.random()*260;pipes.push({x:W+10,top,bottom:top+gap,passed:false})}
+function end(){state='over';startBtn.textContent='Играть снова'}
+function update(dt){if(state!=='playing'||paused)return;bird.vy+=.34*dt;bird.y+=bird.vy*dt;spawn+=dt;if(spawn>95){addPipe();spawn=0}pipes.forEach(p=>{p.x-=2.7*dt;if(!p.passed&&p.x+58<bird.x){p.passed=true;score++;scoreEl.textContent=score;if(score>best){best=score;bestEl.textContent=best;localStorage.setItem('moralFlappyBest',best)}}if(bird.x+bird.r>p.x&&bird.x-bird.r<p.x+58&&(bird.y-bird.r<p.top||bird.y+bird.r>p.bottom))end()});pipes=pipes.filter(p=>p.x>-70);if(bird.y+bird.r>ground||bird.y-bird.r<0)end()}
+function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#eee7dc';ctx.fillRect(0,0,W,H);
+ctx.fillStyle='#e1d5c8';for(let i=0;i<7;i++){let x=(i*75-(performance.now()*.02)%75);ctx.beginPath();ctx.arc(x,90+(i%3)*45,22,0,Math.PI*2);ctx.fill()}
+pipes.forEach(p=>{ctx.fillStyle='#9db9a6';ctx.fillRect(p.x,0,58,p.top);ctx.fillRect(p.x,p.bottom,58,ground-p.bottom);ctx.fillStyle='#7e9f8b';ctx.fillRect(p.x-4,p.top-14,66,14);ctx.fillRect(p.x-4,p.bottom,66,14)});
+ctx.fillStyle='#d9ad94';ctx.beginPath();ctx.arc(bird.x,bird.y,bird.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#30231d';ctx.beginPath();ctx.arc(bird.x+5,bird.y-4,2.5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#c58d73';ctx.beginPath();ctx.moveTo(bird.x+12,bird.y);ctx.lineTo(bird.x+24,bird.y+4);ctx.lineTo(bird.x+12,bird.y+8);ctx.fill();
+ctx.fillStyle='#d5c5b4';ctx.fillRect(0,ground,W,H-ground);ctx.fillStyle='#b9a58f';ctx.fillRect(0,ground,W,5);
+if(state!=='playing'||paused){ctx.fillStyle='#241b17dd';ctx.fillRect(38,235,324,112);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 22px Arial';ctx.fillText(state==='over'?'ИГРА ОКОНЧЕНА':paused?'ПАУЗА':'MORAL FLAPPY',200,278);ctx.font='14px Arial';ctx.fillText(state==='over'?'Нажми «Играть снова»':paused?'Нажми P, чтобы продолжить':'Нажми, чтобы начать',200,308)}}
+function loop(t){let dt=Math.min((t-last)/16.67||1,2);last=t;update(dt);draw();requestAnimationFrame(loop)}
+function action(){if(state==='over'){reset();flap()}else if(paused)return;else flap()}
+c.addEventListener('pointerdown',action);startBtn.onclick=()=>{if(state==='over')reset();if(state==='ready')flap();else if(state==='playing'){paused=false;flap()}};
+document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();action()}if(e.key.toLowerCase()==='p'&&state==='playing')paused=!paused});
+reset();requestAnimationFrame(loop);
+</script></body></html>
