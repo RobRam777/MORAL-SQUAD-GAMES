@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MORAL 2048</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#171311;color:#f4eee5;font:16px Arial;display:grid;place-items:center;padding:18px}.app{width:min(100%,440px);background:#29211d;padding:22px;border-radius:22px}header{display:flex;justify-content:space-between;align-items:center}h1{margin:0;font-size:26px;letter-spacing:2px}p{color:#b9aaa0;font-size:13px}.scores{display:flex;gap:8px;margin:16px 0}.score{flex:1;background:#1d1815;padding:12px;border-radius:12px;color:#b9aaa0}.score b{display:block;color:#fff;font-size:22px;margin-top:5px}.actions{display:flex;gap:8px;margin-bottom:12px}button{border:0;border-radius:10px;padding:11px 14px;background:#d9ad94;color:#241a16;font-weight:bold;cursor:pointer}.board{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;background:#1d1815;padding:9px;border-radius:14px;touch-action:none}.cell{aspect-ratio:1;border-radius:9px;background:#3b302a;display:grid;place-items:center;font-size:clamp(20px,6vw,32px);font-weight:bold;color:#352720}.v2{background:#eee2d1}.v4{background:#e9d2ad}.v8{background:#e6b58d}.v16{background:#dc9878}.v32{background:#d98170}.v64{background:#d16d63}.v128{background:#d9c27f;font-size:26px}.v256{background:#cbb76e;font-size:26px}.v512{background:#b9bd83;font-size:26px}.v1024,.v2048{background:#a9c3a3;font-size:22px}.hint{text-align:center;color:#b9aaa0;font-size:12px;margin-top:14px}.overlay{display:none;text-align:center;background:#1d1815;padding:15px;border-radius:12px;margin-top:12px}.overlay.show{display:block}
+</style></head><body><main class="app"><header><div><h1>MORAL 2048</h1><p>Объединяй одинаковые числа</p></div><button id="new">Новая игра</button></header>
+<div class="scores"><div class="score">СЧЁТ<b id="score">0</b></div><div class="score">РЕКОРД<b id="best">0</b></div></div>
+<div class="actions"><button id="undo">↶ Отменить ход</button></div><div class="board" id="board"></div><div class="overlay" id="overlay"><b id="message"></b><br><button id="continue">Продолжить</button><button id="again">Заново</button></div>
+<div class="hint">Управление: стрелки или WASD · На телефоне — свайпы</div></main>
+<script>
+const boardEl=document.querySelector('#board'),scoreEl=document.querySelector('#score'),bestEl=document.querySelector('#best'),overlay=document.querySelector('#overlay');
+let grid,score,best=+(localStorage.getItem('moral2048Best')||0),previous=null,won=false,keepPlaying=false,ended=false;
+bestEl.textContent=best;
+function empty(){return Array.from({length:4},()=>Array(4).fill(0))}
+function addTile(){let cells=[];grid.forEach((r,y)=>r.forEach((v,x)=>{if(!v)cells.push([y,x])}));if(cells.length){let [y,x]=cells[Math.floor(Math.random()*cells.length)];grid[y][x]=Math.random()<.9?2:4}}
+function snapshot(){previous={grid:grid.map(r=>r.slice()),score}}
+function start(){grid=empty();score=0;previous=null;won=false;keepPlaying=false;ended=false;addTile();addTile();overlay.classList.remove('show');render()}
+function render(){boardEl.innerHTML='';grid.flat().forEach(v=>{let d=document.createElement('div');d.className='cell '+(v?'v'+v:'');d.textContent=v||'';boardEl.appendChild(d)});scoreEl.textContent=score;bestEl.textContent=best;document.querySelector('#undo').disabled=!previous}
+function canMove(){for(let y=0;y<4;y++)for(let x=0;x<4;x++){if(!grid[y][x])return true;if(x<3&&grid[y][x]===grid[y][x+1])return true;if(y<3&&grid[y][x]===grid[y+1][x])return true}return false}
+function move(dir){if(ended)return;let old=grid.map(r=>r.slice()),oldScore=score;let rotated=grid.map(r=>r.slice());if(dir==='up')rotated=rotated[0].map((_,x)=>rotated.map(r=>r[x]));if(dir==='down')rotated=rotated[0].map((_,x)=>rotated.map(r=>r[x]).reverse());if(dir==='right')rotated=rotated.map(r=>r.slice().reverse());
+let changed=false;for(let y=0;y<4;y++){let line=rotated[y].filter(Boolean),out=[];for(let i=0;i<line.length;i++){if(line[i]===line[i+1]){let n=line[i]*2;out.push(n);score+=n;i++;if(n===2048&&!won){won=true}}else out.push(line[i])}while(out.length<4)out.push(0);if(out.some((v,x)=>v!==rotated[y][x]))changed=true;rotated[y]=out}
+if(dir==='right')rotated=rotated.map(r=>r.reverse());if(dir==='up')rotated=rotated[0].map((_,x)=>rotated.map(r=>r[x]));if(dir==='down')rotated=rotated[0].map((_,x)=>rotated.map(r=>r[x]).reverse());
+if(!changed){score=oldScore;return}snapshot();grid=rotated;addTile();if(score>best){best=score;localStorage.setItem('moral2048Best',best)}render();
+if(won&&!keepPlaying){show('Ты собрал 2048!');return}if(!canMove()){ended=true;show('Ходов больше нет')}}
+function show(msg){document.querySelector('#message').textContent=msg;overlay.classList.add('show');document.querySelector('#continue').style.display=won&&!ended?'inline-block':'none'}
+function undo(){if(!previous)return;grid=previous.grid;score=previous.score;previous=null;ended=false;overlay.classList.remove('show');render()}
+document.addEventListener('keydown',e=>{let k=e.key.toLowerCase(),d=({arrowleft:'left',a:'left',arrowright:'right',d:'right',arrowup:'up',w:'up',arrowdown:'down',s:'down'})[k];if(d){e.preventDefault();move(d)}});
+let sx=0,sy=0;boardEl.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});boardEl.addEventListener('touchend',e=>{let dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;if(Math.max(Math.abs(dx),Math.abs(dy))<25)return;move(Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'))},{passive:true});
+document.querySelector('#new').onclick=start;document.querySelector('#again').onclick=start;document.querySelector('#undo').onclick=undo;document.querySelector('#continue').onclick=()=>{keepPlaying=true;overlay.classList.remove('show')};start();
+</script></body></html>
