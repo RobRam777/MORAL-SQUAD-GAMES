@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MORAL Snake</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#171310;color:#f3ece4;font-family:system-ui,Arial}
+main{width:min(94vw,470px);text-align:center}.brand{color:#d8b99a;letter-spacing:5px;font-size:12px;font-weight:800}h1{margin:7px 0 3px;font-size:34px}.sub,.hint{color:#b8a99b;font-size:13px}
+.stats{display:flex;gap:10px;margin:18px 0}.stat{flex:1;background:#211b17;border:1px solid #3a3029;border-radius:14px;padding:10px}.stat small{display:block;color:#b8a99b;text-transform:uppercase;letter-spacing:1px}.stat b{font-size:25px}
+.wrap{position:relative;background:#eee8df;padding:9px;border-radius:18px}canvas{width:100%;display:block;border-radius:10px;touch-action:none}
+.overlay{position:absolute;inset:9px;background:#211b17d9;border-radius:10px;display:grid;place-items:center;padding:20px}.overlay.hide{display:none}.overlay h2{margin:0 0 8px}.overlay p{color:#d4c6b9}
+button{border:0;border-radius:11px;padding:11px 17px;background:#d8b99a;color:#211912;font-weight:800;cursor:pointer}.secondary{background:#302720;color:#f3ece4;border:1px solid #3a3029}.actions{display:flex;justify-content:center;gap:9px;margin:13px 0}
+.pad{display:grid;grid-template-columns:repeat(3,52px);gap:6px;justify-content:center;margin:14px auto}.pad button{padding:8px;background:#302720;color:white;border:1px solid #3a3029;font-size:18px}.up{grid-column:2}.left{grid-column:1}.down{grid-column:2}.right{grid-column:3}
+</style></head><body><main>
+<div class="brand">M O R A L</div><h1>SNAKE</h1><div class="sub">Собирай еду. Расти. Не врезайся.</div>
+<div class="stats"><div class="stat"><small>Счёт</small><b id="score">0</b></div><div class="stat"><small>Рекорд</small><b id="best">0</b></div></div>
+<div class="wrap"><canvas id="c" width="400" height="400"></canvas><div class="overlay" id="overlay"><div><h2 id="ot">Готов играть?</h2><p id="msg">Нажми «Начать игру».</p><button id="start">Начать игру</button></div></div></div>
+<div class="actions"><button class="secondary" id="pause">Пауза</button><button class="secondary" id="restart">Заново</button></div>
+<div class="pad"><button class="up" data-d="up">▲</button><button class="left" data-d="left">◀</button><button class="down" data-d="down">▼</button><button class="right" data-d="right">▶</button></div>
+<div class="hint">Стрелки или WASD · Пробел — пауза</div></main>
+<script>
+const c=document.querySelector('#c'),x=c.getContext('2d'),n=20,s=20;
+let snake,food,dir,next,score=0,best=+(localStorage.moralSnakeBest||0),loop=null,running=false,paused=false;
+const $=id=>document.getElementById(id);$('best').textContent=best;
+function reset(){snake=[{x:9,y:10},{x:8,y:10},{x:7,y:10}];dir={x:1,y:0};next={...dir};score=0;$('score').textContent=0;placeFood();draw()}
+function placeFood(){do{food={x:Math.random()*n|0,y:Math.random()*n|0}}while(snake.some(p=>p.x===food.x&&p.y===food.y))}
+function draw(){x.fillStyle='#eee8df';x.fillRect(0,0,400,400);x.strokeStyle='#e2d9ce';x.lineWidth=.6;for(let i=1;i<n;i++){x.beginPath();x.moveTo(i*s,0);x.lineTo(i*s,400);x.stroke();x.beginPath();x.moveTo(0,i*s);x.lineTo(400,i*s);x.stroke()}
+x.fillStyle='#e7a18e';x.beginPath();x.arc(food.x*s+10,food.y*s+10,7,0,7);x.fill();snake.forEach((p,i)=>{x.fillStyle=i?'#8fbd9b':'#6eaa82';x.beginPath();x.roundRect(p.x*s+1,p.y*s+1,18,18,6);x.fill()})}
+function tick(){dir=next;let h={x:snake[0].x+dir.x,y:snake[0].y+dir.y},eat=h.x===food.x&&h.y===food.y,body=eat?snake:snake.slice(0,-1);
+if(h.x<0||h.y<0||h.x>=n||h.y>=n||body.some(p=>p.x===h.x&&p.y===h.y)){over();return}snake.unshift(h);if(eat){score+=10;$('score').textContent=score;if(score>best){best=score;$('best').textContent=best;localStorage.moralSnakeBest=best}placeFood()}else snake.pop();draw()}
+function start(){if(running&&!paused)return;$('overlay').classList.add('hide');running=true;paused=false;clearInterval(loop);loop=setInterval(tick,Math.max(65,135-score/4))}
+function over(){clearInterval(loop);running=false;paused=false;$('ot').textContent='Игра окончена';$('msg').textContent='Твой счёт: '+score+'. Попробуешь ещё раз?';$('start').textContent='Играть снова';$('overlay').classList.remove('hide')}
+function pause(){if(!running)return;if(paused){start();return}paused=true;clearInterval(loop);$('ot').textContent='Пауза';$('msg').textContent='Нажми «Продолжить», когда будешь готов.';$('start').textContent='Продолжить';$('overlay').classList.remove('hide')}
+function turn(d){let a={up:{x:0,y:-1},down:{x:0,y:1},left:{x:-1,y:0},right:{x:1,y:0}}[d];if(a&&(a.x!==-dir.x||a.y!==-dir.y))next=a}
+document.addEventListener('keydown',e=>{let m={ArrowUp:'up',w:'up',W:'up',ArrowDown:'down',s:'down',S:'down',ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};if(m[e.key]){e.preventDefault();turn(m[e.key])}if(e.code==='Space'){e.preventDefault();pause()}});
+document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>turn(b.dataset.d));$('start').onclick=()=>{if(!running)reset();start()};$('pause').onclick=pause;
+$('restart').onclick=()=>{clearInterval(loop);running=false;paused=false;reset();$('ot').textContent='Готов играть?';$('msg').textContent='Нажми «Начать игру».';$('start').textContent='Начать игру';$('overlay').classList.remove('hide')};
+reset();
+</script></body></html>
